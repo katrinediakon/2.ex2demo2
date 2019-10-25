@@ -114,7 +114,23 @@ $APPLICATION->IncludeFile(
 );?>
 				<div class="content-block">
 					<div class="content-block-inner">
+                        <h3>Выберите язык</h3>
+                        <?$APPLICATION->IncludeComponent(
+                            "bitrix:main.site.selector",
+                            "en_ru",
+                            array(
+                                "CACHE_TIME" => "3600",
+                                "CACHE_TYPE" => "A",
+                                "SITE_LIST" => array(
+                                    0 => "s1",
+                                    1 => "s2",
+                                ),
+                                "COMPONENT_TEMPLATE" => "en_ru"
+                            ),
+                            false
+                        );?>
 						<h3><?=GetMessage('CFT_NEWS')?></h3>
+
 <?
 $APPLICATION->IncludeFile(
 	SITE_DIR."include/news.php",
@@ -127,7 +143,7 @@ $APPLICATION->IncludeFile(
 				
 				<div class="content-block">
 					<div class="content-block-inner">
-						
+
 <?
 $APPLICATION->IncludeComponent("bitrix:search.form", "flat", Array(
 	"PAGE" => "#SITE_DIR#search/",
