@@ -8,50 +8,55 @@ if (!Loader::includeModule("iblock")) {
     ShowError(GetMessage("SIMPLECOMP_EXAM"));
     return;
 }
-if ($arParams['PROPERTY_CODE'] && $arParams['ID_NEWS'] && $arParams['ID_CATALOG']):
-    if ($this->StartResultCache()) {
-        $arResult = array();
+if ($arParams['CODE_AUTHOR'] && $arParams['ID_NEWS'] && $arParams['CODE_USER']):
+    if ($USER->GetID()) {
+        if ($this->StartResultCache(false, $USER->GetID())) {
+            $arResult = array();
+            // user
+            global $USER;
+            $group_user = "";
+            $filter = Array("ID" => $USER->GetID());
+            $rsUsers = CUser::GetList(($by = "NAME"), ($order = "desc"), $filter, array("SELECT" => array($arParams['CODE_USER'])));
+            while ($arUser = $rsUsers->GetNext()) {
+                if ($arUser[$arParams['CODE_USER']])
+                    $group_user = $arUser[$arParams['CODE_USER']];
+            }
+            $user = array();
+            $filter = Array($arParams['CODE_USER'] => $group_user);
+            $rsUsers = CUser::GetList(($by = "NAME"), ($order = "desc"), $filter);
+            while ($arUser = $rsUsers->GetNext()) {
+                if ($arUser["ID"] != $USER->GetID()) {
+                    $arResult["ITEM"][$arUser["ID"]]["ID"] = $arUser["ID"];
+                    $arResult["ITEM"][$arUser["ID"]]["NAME"] = $arUser["LOGIN"];
+                }
+                $user[] = $arUser["ID"];
+            }
+            $new = array();
+            $arSelect = Array("ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_AUTHOR");
+            $arFilter = Array("IBLOCK_ID" => $arParams['ID_NEWS'], "ACTIVE_DATE" => "Y", "ACTIVE" => "Y", "PROPERTY_AUTHOR" => $user);
+            $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize" => 50), $arSelect);
+            while ($ob = $res->GetNext()) {
 
-        $arSelect = Array("ID", "NAME", "ACTIVE_FROM");
-        $arFilter = Array("IBLOCK_ID" => $arParams['ID_NEWS'], "ACTIVE_DATE" => "Y", "ACTIVE" => "Y");
-        $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize" => 50), $arSelect);
-        while ($ob = $res->GetNext()) {
+                $new[$ob["ID"]]["NAME"] = $ob["NAME"];
+                $new[$ob["ID"]]["ID"] = $ob["ID"];
+                $new[$ob["ID"]]["PROPERTY_NEWS"][] = $ob["PROPERTY_AUTHOR_VALUE"];
 
-            $arResult['NEWS'][$ob['ID']]["NAME"] = $ob['NAME'];
-            $arResult['NEWS'][$ob['ID']]["DATE"] = $ob['ACTIVE_FROM'];
-        }
+            }
 
-        $arCatalog = array();
-        $arFilter = Array('IBLOCK_ID' => $arParams['ID_CATALOG'], 'GLOBAL_ACTIVE' => 'Y');
-        $rsSections = CIBlockSection::GetList(array('LEFT_MARGIN' => 'ASC'), $arFilter, false, array("NAME", "ID", $arParams['PROPERTY_CODE']));
-        while ($ar_result = $rsSections->GetNext()) {
-            foreach ($ar_result[$arParams['PROPERTY_CODE']] as $news):
-                $arResult['NEWS'][$news]["CATALOG"][$ar_result["ID"]] = $ar_result["NAME"];
-            endforeach;
-        }
-        $arResult['COUNT'] = 0;
-        $arSelect = Array("NAME", "DATE_ACTIVE_FROM", 'IBLOCK_SECTION_ID', 'PROPERTY_PRICE', 'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER');
-        $arFilter = Array("IBLOCK_ID" => $arParams['ID_CATALOG'], "ACTIVE_DATE" => "Y", "ACTIVE" => "Y");
-        $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize" => 50), $arSelect);
-        while ($ob = $res->GetNext()) {
-            foreach ($arResult['NEWS'] as $key => $item):
-                if (isset($item['CATALOG'][$ob['IBLOCK_SECTION_ID']])):
-                    $arResult['NEWS'][$key]['CATALOG']['ITEM'][] = $ob;
-                    $arResult['COUNT']++;
-                    if (!$arResult["MAX"] && !$arResult["MIN"]) {
-                        $arResult["MAX"] = $ob["PROPERTY_PRICE_VALUE"];
-                        $arResult["MIN"] = $ob["PROPERTY_PRICE_VALUE"];
+            foreach ($new as $key => $value) {
+                if (!in_array($USER->GetID(), $value["PROPERTY_NEWS"])) {
+                    foreach ($value["PROPERTY_NEWS"] as $key => $news) {
+                        $arResult["ITEM"][$news]["NEWS"][] = $value["NAME"];
+                        $arResult["COUNT"]++;
                     }
-                    if ($arResult["MAX"] < $ob["PROPERTY_PRICE_VALUE"])
-                        $arResult["MAX"] = $ob["PROPERTY_PRICE_VALUE"];
-                    if ($arResult["MIN"] > $ob["PROPERTY_PRICE_VALUE"])
-                        $arResult["MIN"] = $ob["PROPERTY_PRICE_VALUE"];
-                endif;
-            endforeach;
+                }
+            }
+            $this->SetResultCacheKeys("COUNT");
+            $APPLICATION->SetTitle("Новостей " . $count);
+            $this->includeComponentTemplate();
         }
+        $APPLICATION->SetTitle("Новостей " . $arResult["COUNT"]);
     }
-    $this->SetResultCacheKeys(array("MAX", "MIN", "COUNT"));
-    $this->includeComponentTemplate();
 endif;
 
 
